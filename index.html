@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neuro Motion Canvas</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas"></canvas>
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+
+    <div class="hud">
+      <button class="hud-toggle" id="hudToggleBtn" type="button" aria-expanded="true">Hide Panel</button>
+      <div class="title">
+        <div>
+          <h1>Neuro Motion Canvas</h1>
+          <p>Send wrist motion through Bluefruit BLE UART into the browser and grow neural art directly across the full-page canvas.</p>
+        </div>
+        <div class="status" id="status">Disconnected</div>
+      </div>
+
+      <div class="grid">
+        <button class="primary" id="connectBtn">Connect Bluefruit</button>
+        <button id="disconnectBtn">Disconnect</button>
+        <button id="clearBtn">Clear Canvas</button>
+        <button class="warn" id="saveBtn">Save PNG</button>
+      </div>
+
+      <div class="telemetry">
+        <div class="telemetry-card">
+          <span class="telemetry-label">Mode</span>
+          <strong id="modeValue">Pointer</strong>
+        </div>
+        <div class="telemetry-card">
+          <span class="telemetry-label">Packets</span>
+          <strong id="packetValue">0</strong>
+        </div>
+        <div class="telemetry-card">
+          <span class="telemetry-label">dx / dy</span>
+          <strong id="vectorValue">0.000 / 0.000</strong>
+        </div>
+        <div class="telemetry-card">
+          <span class="telemetry-label">Energy</span>
+          <strong id="energyLiveValue">0.000</strong>
+        </div>
+      </div>
+
+      <div class="sliders">
+        <div class="control-row">
+          <span>Smooth</span>
+          <input type="range" id="smoothRange" min="0.55" max="0.92" step="0.01" value="0.78" />
+          <span id="smoothValue">0.78</span>
+        </div>
+        <div class="control-row">
+          <span>Energy</span>
+          <input type="range" id="energyRange" min="0.6" max="3.6" step="0.1" value="1.2" />
+          <span id="energyValue">1.2</span>
+        </div>
+        <div class="control-row">
+          <span>Bloom</span>
+          <input type="range" id="bloomRange" min="0.2" max="2.5" step="0.1" value="0.6" />
+          <span id="bloomValue">0.6</span>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><span>1</span> Wear or hold the Bluefruit board and open Chrome or Edge with Web Bluetooth support.</div>
+        <div class="step"><span>2</span> Click Connect and choose the device named <code>NeuroCanvas_CPB</code>.</div>
+        <div class="step"><span>3</span> Move your wrist to steer the brush. Motion energy expands branches, glowing nodes, and line thickness.</div>
+      </div>
+
+      <div class="footnote">
+        <strong>Data format:</strong> The page reads the firmware's <code>dx,dy,dz,energy</code> text stream directly.<br/>
+        <strong>BLE note:</strong> Web Bluetooth usually requires HTTPS or <code>localhost</code>, and Safari / iPhone support is limited.<br/>
+        <strong>Usage:</strong> Once connected, the brush is controlled only by Bluefruit. After disconnecting, you can use the mouse for temporary testing.
+      </div>
+
+      <div class="debug-panel">
+        <div class="debug-head">
+          <strong>BLE Debug</strong>
+          <span id="bleDebugState">idle</span>
+        </div>
+        <pre id="bleLog">No BLE packets yet.</pre>
+      </div>
+    </div>
+
+    <div class="hint">
+      Move the board with your wrist to draw. Softer motion grows calm fibers. Sharp swings ignite brighter synapses, thicker trails, and branching bursts across the canvas.
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
