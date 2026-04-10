@@ -45,8 +45,6 @@ let hudCollapsed = false;
 const state = {
   x: window.innerWidth * 0.5,
   y: window.innerHeight * 0.5,
-  vx: 0,
-  vy: 0,
   lastX: window.innerWidth * 0.5,
   lastY: window.innerHeight * 0.5,
   smooth: parseFloat(smoothRange.value),
@@ -152,8 +150,6 @@ function hardClear() {
   state.y = window.innerHeight * 0.5;
   state.lastX = state.x;
   state.lastY = state.y;
-  state.vx = 0;
-  state.vy = 0;
   state.baseEnergy = 0.3;
 }
 
@@ -161,29 +157,33 @@ function handleMotion(dx, dy, dz, energy) {
   state.lastInput = { dx, dy, dz, energy };
   updateTelemetry();
 
-  const gain = 38 * state.energyGain;
+  const margin = 24;
+  const normalizedDx = clamp(dx, -1, 1);
+  const normalizedDy = clamp(dy, -1, 1);
 
-  const ex = clamp(dx * gain, -56, 56);
-  const ey = clamp(dy * gain, -56, 56);
+  const targetX =
+    margin + ((normalizedDx + 1) * 0.5) * (window.innerWidth - margin * 2);
+  const targetY =
+    margin + ((normalizedDy + 1) * 0.5) * (window.innerHeight - margin * 2);
 
   const combinedEnergy = clamp(
-    Math.abs(energy) + Math.abs(dz) * 0.35,
+    Math.abs(energy) * state.energyGain + Math.abs(dz) * 0.35,
     0,
     14
   );
 
-  state.vx = state.vx * state.smooth + ex * (1 - state.smooth);
-  state.vy = state.vy * state.smooth + ey * (1 - state.smooth);
+  const previousX = state.x;
+  const previousY = state.y;
+
+  state.x = state.x * state.smooth + targetX * (1 - state.smooth);
+  state.y = state.y * state.smooth + targetY * (1 - state.smooth);
   state.baseEnergy = state.baseEnergy * 0.68 + combinedEnergy * 0.32;
 
-  state.x += state.vx;
-  state.y += state.vy;
+  state.x = clamp(state.x, margin, window.innerWidth - margin);
+  state.y = clamp(state.y, margin, window.innerHeight - margin);
 
-  if (state.x < 40 || state.x > window.innerWidth - 40) state.vx *= -0.8;
-  if (state.y < 40 || state.y > window.innerHeight - 40) state.vy *= -0.8;
-
-  state.x = clamp(state.x, 30, window.innerWidth - 30);
-  state.y = clamp(state.y, 30, window.innerHeight - 30);
+  state.lastX = previousX;
+  state.lastY = previousY;
 
   const currentHue = (hue += 1.2 + combinedEnergy * 0.6) % 360;
 
@@ -198,18 +198,22 @@ function handleMotion(dx, dy, dz, energy) {
     life: 1
   };
 
-  const bridgeSteps = Math.max(1, Math.ceil(Math.hypot(state.x - state.lastX, state.y - state.lastY) / 20));
+  const bridgeSteps = Math.max(
+    1,
+    Math.ceil(Math.hypot(state.x - state.lastX, state.y - state.lastY) / 20)
+  );
+
   for (let i = 1; i <= bridgeSteps; i++) {
-    const mix = i / bridgeSteps;
     state.points.push({
       ...point,
-      x: state.lastX + (state.x - state.lastX) * mix,
-      y: state.lastY + (state.y - state.lastY) * mix,
+      x: state.lastX + (state.x - state.lastX) * (i / bridgeSteps),
+      y: state.lastY + (state.y - state.lastY) * (i / bridgeSteps),
       px: state.lastX + (state.x - state.lastX) * ((i - 1) / bridgeSteps),
       py: state.lastY + (state.y - state.lastY) * ((i - 1) / bridgeSteps),
       life: 1
     });
   }
+
   if (state.points.length > 500) {
     state.points.splice(0, state.points.length - 500);
   }
@@ -255,9 +259,6 @@ function handleMotion(dx, dy, dz, energy) {
       hue: currentHue
     });
   }
-
-  state.lastX = state.x;
-  state.lastY = state.y;
 }
 
 function drawBackgroundField(now) {
@@ -434,7 +435,6 @@ function drawCenterPulse() {
 }
 
 function animate(now) {
-  const dt = Math.min((now - lastTime) / 16.666, 2);
   lastTime = now;
 
   softClear();
@@ -551,12 +551,6 @@ function onBleData(event) {
   }
 }
 
-async function sendBleText(text) {
-  if (!rxCharacteristic) return;
-  const encoder = new TextEncoder();
-  await rxCharacteristic.writeValue(encoder.encode(text));
-}
-
 function toggleHud() {
   hudCollapsed = !hudCollapsed;
   syncHudState();
@@ -578,10 +572,11 @@ canvas.addEventListener('mousemove', (e) => {
   if (device) return;
 
   setModeLabel('Pointer');
-  const dx = (e.movementX || 0) * 0.05;
-  const dy = (e.movementY || 0) * 0.05;
+  const margin = 24;
+  const dx = clamp((e.clientX - margin) / (window.innerWidth - margin * 2), 0, 1) * 2 - 1;
+  const dy = clamp((e.clientY - margin) / (window.innerHeight - margin * 2), 0, 1) * 2 - 1;
   const dz = Math.sin(performance.now() * 0.002) * 0.2;
-  const energy = Math.min(6, Math.hypot(dx, dy) * 8);
+  const energy = Math.min(6, Math.abs(e.movementX) * 0.04 + Math.abs(e.movementY) * 0.04);
 
   handleMotion(dx, dy, dz, energy);
 });
